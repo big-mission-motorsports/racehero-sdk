@@ -1,10 +1,6 @@
 ﻿using BigMission.RaceHeroSdk.Models;
-using Newtonsoft.Json;
 using RestSharp;
 using RestSharp.Authenticators;
-using System;
-using System.Collections.Generic;
-using System.Text;
 using System.Threading.Tasks;
 
 namespace BigMission.RaceHeroSdk
@@ -47,5 +43,36 @@ namespace BigMission.RaceHeroSdk
             return await client.GetAsync<Leaderboard>(request);
         }
 
+        public enum Flag { Unknown, Green, Yellow, Red, Warmup, Finish, Stop }
+        public static Flag ParseFlag(string flag)
+        {
+            if (string.IsNullOrWhiteSpace(flag))
+            {
+                return Flag.Unknown;
+            }
+
+            var s = flag.Trim().ToUpper();
+            if (s == "GREEN")
+            {
+                return Flag.Green;
+            }
+            if (s == "YELLOW")
+            {
+                return Flag.Yellow;
+            }
+            if (s == "RED")
+            {
+                return Flag.Red;
+            }
+            if (s == "FINISH")
+            {
+                return Flag.Finish;
+            }
+            if (s == "STOP")
+            {
+                return Flag.Stop;
+            }
+            return Flag.Unknown;
+        }
     }
 }
