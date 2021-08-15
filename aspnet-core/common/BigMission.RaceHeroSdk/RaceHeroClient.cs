@@ -8,7 +8,7 @@ namespace BigMission.RaceHeroSdk
     /// <summary>
     /// This client wraps access to Race Hero API resources.
     /// </summary>
-    public class RaceHeroClient
+    public class RaceHeroClient : IRaceHeroClient
     {
         private string RootUrl { get; }
         private string ApiKey { get; }
