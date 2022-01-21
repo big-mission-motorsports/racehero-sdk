@@ -1,4 +1,5 @@
 ﻿using BigMission.RaceHeroSdk.Models;
+using Newtonsoft.Json;
 using RestSharp;
 using RestSharp.Authenticators;
 using System.Threading.Tasks;
@@ -23,24 +24,30 @@ namespace BigMission.RaceHeroSdk
         {
             var client = new RestClient(RootUrl);
             client.Authenticator = new HttpBasicAuthenticator(ApiKey, "");
-            var request = new RestRequest($"events?limit={limit}&offset={offset}&live={live.ToString().ToLower()}&expand=", DataFormat.Json);
-            return await client.GetAsync<Events>(request);
+            var request = new RestRequest($"events?limit={limit}&offset={offset}&live={live.ToString().ToLower()}&expand=");
+            request.RequestFormat = DataFormat.Json;
+            var resp = await client.GetAsync(request);
+            return JsonConvert.DeserializeObject<Events>(resp.Content);
         }
 
         public async Task<Event> GetEvent(string eventId)
         {
             var client = new RestClient(RootUrl);
             client.Authenticator = new HttpBasicAuthenticator(ApiKey, "");
-            var request = new RestRequest($"events/{eventId}?expand=", DataFormat.Json);
-            return await client.GetAsync<Event>(request);
+            var request = new RestRequest($"events/{eventId}?expand=");
+            request.RequestFormat = DataFormat.Json;
+            var resp = await client.GetAsync(request);
+            return JsonConvert.DeserializeObject<Event>(resp.Content);
         }
 
         public async Task<Leaderboard> GetLeaderboard(string eventId)
         {
             var client = new RestClient(RootUrl);
             client.Authenticator = new HttpBasicAuthenticator(ApiKey, "");
-            var request = new RestRequest($"events/{eventId}/live/leaderboard", DataFormat.Json);
-            return await client.GetAsync<Leaderboard>(request);
+            var request = new RestRequest($"events/{eventId}/live/leaderboard");
+            request.RequestFormat = DataFormat.Json;
+            var resp = await client.GetAsync(request);
+            return JsonConvert.DeserializeObject<Leaderboard>(resp.Content);
         }
 
         public enum Flag { Unknown, Green, Yellow, Red, Warmup, Finish, Stop }
