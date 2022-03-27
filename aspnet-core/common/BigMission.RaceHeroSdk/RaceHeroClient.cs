@@ -79,6 +79,10 @@ namespace BigMission.RaceHeroSdk
             {
                 return Flag.Stop;
             }
+            if (s == "WARMUP")
+            {
+                return Flag.Warmup;
+            }
             return Flag.Unknown;
         }
     }
