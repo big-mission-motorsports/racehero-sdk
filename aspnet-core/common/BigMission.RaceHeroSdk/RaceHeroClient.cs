@@ -50,6 +50,16 @@ namespace BigMission.RaceHeroSdk
             return JsonConvert.DeserializeObject<Leaderboard>(resp.Content);
         }
 
+        public async Task<LiveTransponder> GetLiveTransponder(string transponderId)
+        {
+            var client = new RestClient(RootUrl);
+            client.Authenticator = new HttpBasicAuthenticator(ApiKey, "");
+            var request = new RestRequest($"live/transponders/{transponderId}");
+            request.RequestFormat = DataFormat.Json;
+            var resp = await client.GetAsync(request);
+            return JsonConvert.DeserializeObject<LiveTransponder>(resp.Content);
+        }
+
         public enum Flag { Unknown, Green, Yellow, Red, Warmup, Finish, Stop }
         public static Flag ParseFlag(string flag)
         {
