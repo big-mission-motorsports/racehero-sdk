@@ -22,7 +22,7 @@ namespace BigMission.RaceHeroSdk.Status
         private Event lastEvent;
         private EventStates state;
 
-
+        public EventPollRequest() { }
         public EventPollRequest(string rhEventId, ILogger logger, IRaceHeroClient raceHeroClient)
         {
             EventId = rhEventId;
@@ -31,7 +31,7 @@ namespace BigMission.RaceHeroSdk.Status
         }
 
 
-        public async Task<(EventStates state, Event evt, Leaderboard leaderboard)> PollEventAsync()
+        public virtual async Task<(EventStates state, Event evt, Leaderboard leaderboard)> PollEventAsync()
         {
             var sw = Stopwatch.StartNew();
             Event evt = null;
