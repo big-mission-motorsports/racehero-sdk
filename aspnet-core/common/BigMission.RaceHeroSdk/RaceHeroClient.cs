@@ -22,8 +22,8 @@ namespace BigMission.RaceHeroSdk
 
         public async Task<Events> GetEvents(int limit = 25, int offset = 0, bool live = false)
         {
-            var client = new RestClient(RootUrl);
-            client.Authenticator = new HttpBasicAuthenticator(ApiKey, "");
+            var client = new RestClient(options:new RestClientOptions(RootUrl) { Authenticator = new HttpBasicAuthenticator(ApiKey, "") });
+            //client.Authenticator = new HttpBasicAuthenticator(ApiKey, "");
             var request = new RestRequest($"events?limit={limit}&offset={offset}&live={live.ToString().ToLower()}&expand=");
             request.RequestFormat = DataFormat.Json;
             var resp = await client.GetAsync(request);
@@ -32,8 +32,7 @@ namespace BigMission.RaceHeroSdk
 
         public async Task<Event> GetEvent(string eventId)
         {
-            var client = new RestClient(RootUrl);
-            client.Authenticator = new HttpBasicAuthenticator(ApiKey, "");
+            var client = new RestClient(options: new RestClientOptions(RootUrl) { Authenticator = new HttpBasicAuthenticator(ApiKey, "") });
             var request = new RestRequest($"events/{eventId}?expand=");
             request.RequestFormat = DataFormat.Json;
             var resp = await client.GetAsync(request);
@@ -42,8 +41,7 @@ namespace BigMission.RaceHeroSdk
 
         public async Task<Leaderboard> GetLeaderboard(string eventId)
         {
-            var client = new RestClient(RootUrl);
-            client.Authenticator = new HttpBasicAuthenticator(ApiKey, "");
+            var client = new RestClient(options: new RestClientOptions(RootUrl) { Authenticator = new HttpBasicAuthenticator(ApiKey, "") });
             var request = new RestRequest($"events/{eventId}/live/leaderboard");
             request.RequestFormat = DataFormat.Json;
             var resp = await client.GetAsync(request);
@@ -52,8 +50,7 @@ namespace BigMission.RaceHeroSdk
 
         public async Task<LiveTransponder> GetLiveTransponder(string transponderId)
         {
-            var client = new RestClient(RootUrl);
-            client.Authenticator = new HttpBasicAuthenticator(ApiKey, "");
+            var client = new RestClient(options: new RestClientOptions(RootUrl) { Authenticator = new HttpBasicAuthenticator(ApiKey, "") });
             var request = new RestRequest($"live/transponders/{transponderId}");
             request.RequestFormat = DataFormat.Json;
             var resp = await client.GetAsync(request);

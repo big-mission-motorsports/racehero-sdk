@@ -1,5 +1,5 @@
 ﻿using BigMission.RaceHeroSdk.Models;
-using NLog;
+using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -23,10 +23,10 @@ namespace BigMission.RaceHeroSdk.Status
         private EventStates state;
 
         public EventPollRequest() { }
-        public EventPollRequest(string rhEventId, ILogger logger, IRaceHeroClient raceHeroClient)
+        public EventPollRequest(string rhEventId, ILoggerFactory loggerFactory, IRaceHeroClient raceHeroClient)
         {
             EventId = rhEventId;
-            Logger = logger;
+            Logger = loggerFactory.CreateLogger(GetType().Name);
             RhClient = raceHeroClient;
         }
 
@@ -46,7 +46,7 @@ namespace BigMission.RaceHeroSdk.Status
                 leaderboard = await PollLeaderboardAsync();
             }
 
-            Logger.Debug($"Updated event in {sw.ElapsedMilliseconds}ms state={state}");
+            Logger.LogDebug($"Updated event in {sw.ElapsedMilliseconds}ms state={state}");
 
             return (state, evt, leaderboard);
         }
@@ -59,7 +59,7 @@ namespace BigMission.RaceHeroSdk.Status
             try
             {
                 var eventId = EventId;
-                Logger.Debug($"Checking for event {eventId} to start");
+                Logger.LogDebug($"Checking for event {eventId} to start");
                 var evt = await RhClient.GetEvent(eventId);
 
                 lastEvent = evt;
@@ -69,13 +69,13 @@ namespace BigMission.RaceHeroSdk.Status
                 // When the event starts, transition to poll for leaderboard data
                 if (isLive)
                 {
-                    Logger.Info($"Event {eventId} is live, starting to poll for race status");
+                    Logger.LogInformation($"Event {eventId} is live, starting to poll for race status");
                     state = EventStates.Started;
                 }
                 // Check for ended
                 else if (isEnded)
                 {
-                    Logger.Info($"Event {eventId} has ended, terminating subscription polling, waiting for event to restart.");
+                    Logger.LogInformation($"Event {eventId} has ended, terminating subscription polling, waiting for event to restart.");
                     state = EventStates.WaitingForStart;
                 }
 
@@ -83,7 +83,7 @@ namespace BigMission.RaceHeroSdk.Status
             }
             catch (Exception ex)
             {
-                Logger.Error(ex, "Error polling event");
+                Logger.LogError(ex, "Error polling event");
             }
             return null;
         }
@@ -94,13 +94,13 @@ namespace BigMission.RaceHeroSdk.Status
             try
             {
                 var sw = Stopwatch.StartNew();
-                Logger.Trace($"Polling leaderboard for event {EventId}");
+                Logger.LogTrace($"Polling leaderboard for event {EventId}");
                 var leaderboard = await RhClient.GetLeaderboard(EventId);
 
                 // Stop polling when the event is over
                 if (leaderboard == null || leaderboard.Racers == null)
                 {
-                    Logger.Info($"Event {EventId} has ended");
+                    Logger.LogInformation($"Event {EventId} has ended");
                     state = EventStates.WaitingForStart;
                 }
                 else // Process lap updates
@@ -124,14 +124,14 @@ namespace BigMission.RaceHeroSdk.Status
                     }
 
                     var latestStatusCopy = racerStatus.Values.ToArray();
-                    Logger.Trace($"Processing subscriber car lap changes");
+                    Logger.LogTrace($"Processing subscriber car lap changes");
                 }
 
                 return leaderboard;
             }
             catch (Exception ex)
             {
-                Logger.Error(ex, "Error polling leaderboard");
+                Logger.LogError(ex, "Error polling leaderboard");
             }
             return null;
         }
