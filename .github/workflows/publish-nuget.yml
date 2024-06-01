@@ -25,6 +25,6 @@ jobs:
       - name: Build
         run: dotnet build BigMission.RaceHeroSdk/BigMission.RaceHeroSdk.csproj --no-restore --configuration Release
       - name: Create the package
-        run: dotnet pack BigMission.CanTools/BigMission.RaceHeroSdk.csproj --configuration Release
+        run: dotnet pack BigMission.RaceHeroSdk/BigMission.RaceHeroSdk.csproj --configuration Release
       - name: Publish the package to Nuget
         run: dotnet nuget push BigMission.RaceHeroSdk/bin/Release/*.nupkg -s https://api.nuget.org/v3/index.json --api-key ${{secrets.NUGET_TOKEN}} --skip-duplicate
