@@ -6,134 +6,133 @@ using System.Diagnostics;
 using System.Linq;
 using System.Threading.Tasks;
 
-namespace BigMission.RaceHeroSdk.Status
+namespace BigMission.RaceHeroSdk.Status;
+
+public class EventPollRequest
 {
-    public class EventPollRequest
+    public string EventId { get; }
+
+    private ILogger Logger { get; }
+    private IRaceHeroClient RhClient { get; }
+
+    /// <summary>
+    /// Latest Car status
+    /// </summary>
+    private readonly Dictionary<string, Racer> racerStatus = [];
+    private Event lastEvent;
+    private EventStates state;
+
+    public EventPollRequest() { }
+    public EventPollRequest(string rhEventId, ILoggerFactory loggerFactory, IRaceHeroClient raceHeroClient)
     {
-        public string EventId { get; }
+        EventId = rhEventId;
+        Logger = loggerFactory.CreateLogger(GetType().Name);
+        RhClient = raceHeroClient;
+    }
 
-        private ILogger Logger { get; }
-        private IRaceHeroClient RhClient { get; }
 
-        /// <summary>
-        /// Latest Car status
-        /// </summary>
-        private readonly Dictionary<string, Racer> racerStatus = new();
-        private Event lastEvent;
-        private EventStates state;
+    public virtual async Task<(EventStates state, Event evt, Leaderboard leaderboard)> PollEventAsync()
+    {
+        var sw = Stopwatch.StartNew();
+        Event evt = null;
+        Leaderboard leaderboard = null;
 
-        public EventPollRequest() { }
-        public EventPollRequest(string rhEventId, ILoggerFactory loggerFactory, IRaceHeroClient raceHeroClient)
+        if (state == EventStates.WaitingForStart)
         {
-            EventId = rhEventId;
-            Logger = loggerFactory.CreateLogger(GetType().Name);
-            RhClient = raceHeroClient;
+            evt = await CheckWaitForStartAsync();
+        }
+        else if (state == EventStates.Started)
+        {
+            leaderboard = await PollLeaderboardAsync();
         }
 
+        Logger.LogDebug($"Updated event in {sw.ElapsedMilliseconds}ms state={state}");
 
-        public virtual async Task<(EventStates state, Event evt, Leaderboard leaderboard)> PollEventAsync()
+        return (state, evt, leaderboard);
+    }
+
+    /// <summary>
+    /// Checks on status of the event waiting for it to start.
+    /// </summary>
+    private async Task<Event> CheckWaitForStartAsync()
+    {
+        try
+        {
+            var eventId = EventId;
+            Logger.LogDebug("Checking for event {eventId} to start", eventId);
+            var evt = await RhClient.GetEvent(eventId);
+
+            lastEvent = evt;
+            var isLive = lastEvent.IsLive;
+            var isEnded = false;
+
+            // When the event starts, transition to poll for leaderboard data
+            if (isLive)
+            {
+                Logger.LogInformation("Event {eventId} is live, starting to poll for race status", eventId);
+                state = EventStates.Started;
+            }
+            // Check for ended
+            else if (isEnded)
+            {
+                Logger.LogInformation("Event {eventId} has ended, terminating subscription polling, waiting for event to restart.", eventId);
+                state = EventStates.WaitingForStart;
+            }
+
+            return evt;
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error polling event");
+        }
+        return null;
+    }
+
+
+    private async Task<Leaderboard> PollLeaderboardAsync()
+    {
+        try
         {
             var sw = Stopwatch.StartNew();
-            Event evt = null;
-            Leaderboard leaderboard = null;
+            Logger.LogTrace("Polling leaderboard for event {EventId}", EventId);
+            var leaderboard = await RhClient.GetLeaderboard(EventId);
 
-            if (state == EventStates.WaitingForStart)
+            // Stop polling when the event is over
+            if (leaderboard == null || leaderboard.Racers == null)
             {
-                evt = await CheckWaitForStartAsync();
+                Logger.LogInformation("Event {EventId} has ended", EventId);
+                state = EventStates.WaitingForStart;
             }
-            else if (state == EventStates.Started)
+            else // Process lap updates
             {
-                leaderboard = await PollLeaderboardAsync();
-            }
+                var cf = leaderboard.CurrentFlag;
+                var flag = RaceHeroClient.ParseFlag(cf);
 
-            Logger.LogDebug($"Updated event in {sw.ElapsedMilliseconds}ms state={state}");
-
-            return (state, evt, leaderboard);
-        }
-
-        /// <summary>
-        /// Checks on status of the event waiting for it to start.
-        /// </summary>
-        private async Task<Event> CheckWaitForStartAsync()
-        {
-            try
-            {
-                var eventId = EventId;
-                Logger.LogDebug($"Checking for event {eventId} to start");
-                var evt = await RhClient.GetEvent(eventId);
-
-                lastEvent = evt;
-                var isLive = lastEvent.IsLive;
-                var isEnded = false;
-
-                // When the event starts, transition to poll for leaderboard data
-                if (isLive)
+                var logs = new List<Racer>();
+                foreach (var newRacer in leaderboard.Racers)
                 {
-                    Logger.LogInformation($"Event {eventId} is live, starting to poll for race status");
-                    state = EventStates.Started;
-                }
-                // Check for ended
-                else if (isEnded)
-                {
-                    Logger.LogInformation($"Event {eventId} has ended, terminating subscription polling, waiting for event to restart.");
-                    state = EventStates.WaitingForStart;
-                }
-
-                return evt;
-            }
-            catch (Exception ex)
-            {
-                Logger.LogError(ex, "Error polling event");
-            }
-            return null;
-        }
-
-
-        private async Task<Leaderboard> PollLeaderboardAsync()
-        {
-            try
-            {
-                var sw = Stopwatch.StartNew();
-                Logger.LogTrace($"Polling leaderboard for event {EventId}");
-                var leaderboard = await RhClient.GetLeaderboard(EventId);
-
-                // Stop polling when the event is over
-                if (leaderboard == null || leaderboard.Racers == null)
-                {
-                    Logger.LogInformation($"Event {EventId} has ended");
-                    state = EventStates.WaitingForStart;
-                }
-                else // Process lap updates
-                {
-                    var cf = leaderboard.CurrentFlag;
-                    var flag = RaceHeroClient.ParseFlag(cf);
-
-                    var logs = new List<Racer>();
-                    foreach (var newRacer in leaderboard.Racers)
+                    if (racerStatus.TryGetValue(newRacer.RacerNumber, out var racer))
                     {
-                        if (racerStatus.TryGetValue(newRacer.RacerNumber, out var racer))
+                        // Process changes
+                        if (racer.CurrentLap != newRacer.CurrentLap)
                         {
-                            // Process changes
-                            if (racer.CurrentLap != newRacer.CurrentLap)
-                            {
-                                // Log each new lap
-                                logs.Add(newRacer);
-                            }
+                            // Log each new lap
+                            logs.Add(newRacer);
                         }
-                        racerStatus[newRacer.RacerNumber] = newRacer;
                     }
-
-                    var latestStatusCopy = racerStatus.Values.ToArray();
-                    Logger.LogTrace($"Processing subscriber car lap changes");
+                    racerStatus[newRacer.RacerNumber] = newRacer;
                 }
 
-                return leaderboard;
+                var latestStatusCopy = racerStatus.Values.ToArray();
+                Logger.LogTrace($"Processing subscriber car lap changes");
             }
-            catch (Exception ex)
-            {
-                Logger.LogError(ex, "Error polling leaderboard");
-            }
-            return null;
+
+            return leaderboard;
         }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error polling leaderboard");
+        }
+        return null;
     }
 }

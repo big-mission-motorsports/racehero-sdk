@@ -1,4 +1,3 @@
-﻿namespace BigMission.RaceHeroSdk.Status
-{
-    public enum EventStates { WaitingForStart, Started }
-}
+﻿namespace BigMission.RaceHeroSdk.Status;
+
+public enum EventStates { WaitingForStart, Started }
